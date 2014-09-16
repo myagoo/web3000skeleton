@@ -8,7 +8,7 @@ var production = process.env.NODE_ENV === 'production';
 
 function scripts(watch) {
   var bundler, rebundle;
-  bundler = browserify('./src/client.js', {
+  bundler = browserify('./src/client.jsx', {
     basedir: __dirname,
     debug: !production,
     cache: {}, // required for watchify
