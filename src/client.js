@@ -1,2 +1,2 @@
 var React = require('react');
-alert(React);
+var Bootstrap = require('react-bootstrap');
