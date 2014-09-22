@@ -4,6 +4,7 @@
   "scripts": {},
   "dependencies": {
     "browserify": "^5.11.2",
+    "date-pikinator": "^0.3.0",
     "gulp": "^3.8.8",
     "react": "^0.11.2",
     "react-bootstrap": "^0.12.0",
