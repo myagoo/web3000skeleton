@@ -1,113 +1,192 @@
 var React = require('react');
-var DatePicker = require('date-pikinator');
 
-var SelectableItem = React.createClass({
-  handleClick: function(){
-    this.props.onSelect && this.props.onSelect(this.props.value || this.props.children, this.props.children);
-  },
-  render: function(){
-    return <span onClick={this.handleClick}>{this.props.children}</span>
+var extend = function ( defaults, options ) {
+    var extended = {};
+    var prop;
+    for (prop in defaults) {
+        if (Object.prototype.hasOwnProperty.call(defaults, prop)) {
+            extended[prop] = defaults[prop];
+        }
+    }
+    for (prop in options) {
+        if (Object.prototype.hasOwnProperty.call(options, prop)) {
+            extended[prop] = options[prop];
+        }
+    }
+    return extended;
+};
+
+function getOffset(node){
+  var top=0;
+  var left=0;
+  var elmt=node;
+  while(elmt) {
+    top=top+parseInt(elmt.offsetTop,10);
+    left=left+parseInt(elmt.offsetLeft,10);
+    elmt=elmt.offsetParent;
   }
-});
+  return {top:top-document.body.scrollTop,left:left};
+};
 
-var SelectableDatepicker = React.createClass({
+var Draggable = React.createClass({
+  getDefaultProps: function(){
+    return {
+      container_width: 200,
+      container_height: 200,
+      content_width: 50,
+      content_height: 50,
+      content_top: 0,
+      content_left: 0
+    };
+  },
+  getContainerStyle: function(){
+    return extend(this.props.style, {
+      height: this.props.container_height,
+      width: this.props.container_width,
+      backgroundColor: 'lightGrey'
+    });
+  },
+  getContentStyle: function(){
+    return {
+      height: this.props.content_height,
+      width: this.props.content_width,
+      top: this.state.content_top,
+      left: this.state.content_left,
+      backgroundColor: 'grey'
+    };
+  },
+  formatContentPosition: function(x, y) {
+    var top = Math.max(0, Math.min(this.props.container_height - this.props.content_height, y));
+    var left = Math.max(0, Math.min(this.props.container_width - this.props.content_width, x));
+    return {top: top, left: left};
+  },
+  handleMouseMove: function(event){
+    if (!this.state.content_mouseClick) {
+      return;
+    }
+    var top = this.state.content_top + (event.pageY - this.state.content_mouseClick.y);
+    var left = this.state.content_left + (event.pageX - this.state.content_mouseClick.x);
+
+    var position = this.formatContentPosition(left, top);
+
+    this.setState({
+      content_top: position.top,
+      content_left: position.left,
+      content_mouseClick: {
+        x: event.pageX,
+        y: event.pageY,
+      }
+    });
+
+    this.props.onMove && this.props.onMove({top: top, left: left});
+  },
+  handleMouseDown: function(event){
+    this.setState({
+      content_mouseClick: {
+        x: event.pageX,
+        y: event.pageY
+      }
+    });
+  },
+  handleMouseUp: function(){
+    this.setState({
+      content_mouseClick: null
+    });
+  },
   getInitialState: function(){
     return {
-      value: this.props.value
+      content_top: this.props.content_top,
+      content_left: 0
     };
   },
-  handleValidate: function(){
-    this.props.onSelect && this.props.onSelect(this.state.value, this.state.value);
-  },
-  handleChange: function(e){
+  handleLeave: function(){
     this.setState({
-      value: e.target.value
+      content_mouseClick: null
+    });
+  },
+  componentWillReceiveProps:function(props) {
+    var position = this.formatContentPosition(props.content_left, props.content_top);
+    this.setState({
+      content_top: position.top,
+      content_left: position.left
     });
   },
   render: function(){
+    console.log('Draggable', this.props.style);
     return (
-      <div>
-        <input
-          type="date"
-          value={this.state.value}
-          onChange={this.handleChange}
-        />
-        <button onClick={this.handleValidate}>'√'</button>
+      <div className={'draggable-container'} style={this.getContainerStyle()} onMouseLeave={this.handleLeave}>
+      <div ref="content" className={'draggable-content'} style={this.getContentStyle()} onMouseDown={this.handleMouseDown} onMouseUp={this.handleMouseUp} onMouseMove={this.handleMouseMove}/>
       </div>
     );
   }
 });
 
-var Selector = React.createClass({
+var ScrollBar = React.createClass({
+  getDefaultProps: function(){
+    return {
+      height: 100,
+      handleHeight: 40,
+    };
+  },
+  handleMove: function(position){
+    var percent = position.top / (this.props.height - this.props.handleHeight);
+    this.props.onScrollBarScroll && this.props.onScrollBarScroll(percent);
+  },
   getInitialState: function() {
     return {
-      open: false,
-      displayValue: 'Choisissez une valeur...'
-    }
-  },
-  handleClick: function() {
-    this.setState({
-      open: !this.state.open
-    });
-  },
-  handleSelect: function(formValue, displayValue){
-    this.setState({
-      value: formValue,
-      displayValue: displayValue,
-      open: false
-    });
-
-    this.props.onChange && this.props.onChange(formValue, displayValue);
-  },
-  getDropDownStyle: function(){
-    return {
-      display: this.state.open ? 'block': 'none',
-      position: 'absolute'
+      percent: 0
     };
   },
-  renderDropDown: function() {
-    var items = this.props.children.map(function (child, index) {
-      child.props.onSelect = this.handleSelect;
-      return <li key={index}>{child}</li>;
-    }.bind(this));
-
-    return <ul style={this.getDropDownStyle()}>{items}</ul>;
-  },
-  render: function() {
-    return (
-      <div>
-        <span onClick={this.handleClick}>{this.state.displayValue}</span>
-        {this.renderDropDown()}
-      </div>
+  render: function(){
+    console.log('ScrollBar', this.props.style);
+    return this.transferPropsTo(
+      <Draggable
+      ref="draggable"
+      container_width={20}
+      container_height={this.props.height}
+      content_width={20}
+      content_height={this.props.handleHeight}
+      content_top={this.state.percent * (this.props.height - this.props.handleHeight)}
+      onMove={this.handleMove}
+      />
     );
   }
 });
 
-var SelectableSelector = React.createClass({
-  handleChange: function(formValue, displayValue){
-    this.props.onSelect && this.props.onSelect(formValue, displayValue);
+var Scrollable = React.createClass({
+  componentDidMount: function(){
+
+  },
+  getScrollBarStyle: function(){
+    return {
+      display: 'inline-block',
+      verticalAlign: 'top'
+    };
+  },
+  getContentStyle: function(){
+    return {
+      display: 'inline-block',
+      verticalAlign: 'top',
+      height: this.props.height
+    };
+  },
+  getStyle: function(){
+    return {
+      overflow: 'hidden'
+    };
   },
   render: function(){
-    return this.transferPropsTo(<Selector onChange={this.handleChange}>{this.props.children}</Selector>);
+    return this.transferPropsTo(<div style={this.getStyle()}>
+    <div ref="content" style={this.getContentStyle()}>{this.props.children}</div>
+    <ScrollBar ref="scrollbar" style={this.getScrollBarStyle()} height={this.props.height}/>
+    </div>);
   }
 });
 
 var items = [];
 
-for (var i = 0, j = 3 ; i < j ; i++) {
-  items.push(<SelectableItem value={i}>{'Item #' + i}</SelectableItem>);
+for(var i = 0, j = 5000; i < j ; i++){
+  items.push(<li>{"Item #" + i}</li>);
 }
 
-items.push(<SelectableDatepicker value="22/09/2014"/>);
-
-var items2 = [];
-
-for (var i = 3, j = 6 ; i < j ; i++) {
-  items2.push(<SelectableItem value={i}>{'Item #' + i}</SelectableItem>);
-}
-
-items2.push(<SelectableDatepicker value="23/09/2014"/>);
-
-items.push(<SelectableSelector>{items2}</SelectableSelector>);
-
-React.renderComponent(<Selector>{items}</Selector>, document.body);
+React.renderComponent(<Scrollable height={200}><ul>{items}</ul></Scrollable>, document.body);
