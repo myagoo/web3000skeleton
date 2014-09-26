@@ -1,4 +1,4 @@
-var React = require('react');
+var React = require('react/addons');
 
 var Selector = React.createClass({
   getInitialState: function() {
@@ -34,21 +34,19 @@ var Selector = React.createClass({
     });
   },
   renderDropDown: function() {
-    var items = React.Children.map(this.props.children, function (child, index) {
-      if(
-        this.state.searchValue === ''
-        || (child.props.children === undefined && child.props.value === undefined)
-        || (child.props.children && child.props.children.toString && child.props.children.toString().indexOf(this.state.searchValue) !== -1)
-        || (child.props.value && child.props.value.toString && child.props.value.toString().indexOf(this.state.searchValue) !== -1)
-      ){
-        child.props.onSelect = this.handleSelect;
-        return <li key={index}>{child}</li>;
+    var children = React.Children.map(this.props.children, function (child, index) {
+      if(this.state.searchValue === '' || this.refs['child-' + index] && this.refs['child-' + index].match(this.state.searchValue) === true){
+        return React.addons.cloneWithProps(child, {
+          ref: 'child-' + index,
+          key: 'child-' + index,
+          onSelect: this.handleSelect
+        });
       }
     }.bind(this));
 
     return <ul style={this.getDropDownStyle()}>
-      <input onChange={this.handleSearchChange} value={this.state.searchValue} placeholder="Filtrer..."/>
-      {items}
+    <input onChange={this.handleSearchChange} value={this.state.searchValue} placeholder="Filtrer..."/>
+    {children}
     </ul>;
   },
   render: function() {
